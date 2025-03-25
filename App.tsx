@@ -6,6 +6,11 @@ import { useFonts, Nunito_400Regular, Nunito_500Medium, Nunito_600SemiBold, Nuni
 import Icon from 'react-native-vector-icons/Ionicons';
 
 
+const lightAccentColor = 'rgb(113, 145, 175)'
+const midAccentColor = 'rgb(38, 91, 139)'
+const darkAccentColor = 'rgb(14, 50, 83)'
+const bgColor = '#FFFBFA'
+
 export default function App() {
 	useFonts({
 		Nunito_400Regular,
@@ -17,244 +22,167 @@ export default function App() {
 	  });
 
 	const [answer, setAnswer] = useState('0')
-	const [firstNumber, setFirstNumber] = useState('')
-	const [secondNumber, setSecondNumber] = useState('')
-	const [operator, setOperator] = useState('')
-	const [display, setDisplay] = useState('0')
+	const [guess, setGuess] = useState('')
+	const [hint, setHint] = useState('')
+	const [tryings, setTryings] = useState('0')
+	const [numbers, setNumbers] = useState<string[]>([])
+	const [rotateValue, setRotateValue] = useState(0);
+	const [animValues, setAnimValues] = useState<{
+		rotate: Animated.Value[],
+		scale: Animated.Value[]
+	  }>({ rotate: [], scale: [] });
 
-	const scaleAnim = useRef(new Animated.Value(1)).current
-	const sweepAnim = useRef(new Animated.Value(0)).current
-	const sweepResultAnim = useRef(new Animated.Value(0)).current
-	
-	const scaleInAnimation = () => {
-		Animated.timing(scaleAnim, {
-			toValue: 1.2,
-			duration: 150,
-			useNativeDriver: true
-		}).start() 
-	}
-	const scaleOutAnimation = () => {
-		Animated.timing(scaleAnim, {
-			toValue: 1,
-			duration: 80,
-			useNativeDriver: true 
-		}).start() 
-	}
-
-	const sweepInAnimation = () => {
-		Animated.timing(sweepAnim, {
-			toValue: -75,
-			duration: 300,
-			useNativeDriver: true
-		}).start() 
-	}
-	const sweepOutAnimation = () => {
-		Animated.timing(sweepAnim, {
-			toValue: 0,
-			duration: 400,
-			useNativeDriver: true
-		}).start() 
-	}
-	const sweepResultAnimation = () => {
-		Animated.timing(sweepResultAnim, {
-			toValue: 480,
-			duration: 500,
-			useNativeDriver: true
-		}).start()
-		setTimeout(() => {
-			Animated.timing(sweepResultAnim, {
-				toValue: -510,
-				duration: 1,
-				useNativeDriver: true
-			}).start()
-		}, 500);
-		setTimeout(() => {
-			Animated.timing(sweepResultAnim, {
-				toValue: 0,
-				duration: 500,
-				useNativeDriver: true
-			}).start()
-		}, 600);
-	}
+	const sizeAnimValue = useRef(new Animated.Value(1)).current
+	const rotateAnimValue = useRef(new Animated.Value(0)).current
 
 	useEffect(() => {
-		if(display === ''){
-			setDisplay('0')
-		}
-	}, [display])
-	
-	const handleNumber = (number: string) => {
-		if (operator === '') {
-			if(number === '.' && firstNumber === '') {
-				setFirstNumber(0 + number)
-				setDisplay(0 + number)
-			} else{
-				setFirstNumber(firstNumber + number)
-				setDisplay(firstNumber + number)
-			}
+		const newRotateValues = numbers.map(() => new Animated.Value(0));
+		const newScaleValues = numbers.map(() => new Animated.Value(1));
+		
+		setAnimValues({
+		  rotate: newRotateValues,
+		  scale: newScaleValues
+		});
+	  }, [numbers.length]);
+	   
+	  const rotateInAnimation = (index: number) => {
+		if (!animValues.rotate[index]) return;
+		
+		Animated.timing(animValues.rotate[index], {
+		  toValue: 360,
+		  useNativeDriver: true
+		}).start();
+		
+		setTimeout(() => {
+		  Animated.timing(animValues.rotate[index], {
+			toValue: 0,
+			useNativeDriver: true
+		  }).start();
+		}, 1000);
+	  }
+	  
+	  const scaleInAnimation = (index: number) => {
+		if (!animValues.scale[index]) return;
+		
+		Animated.timing(animValues.scale[index], {
+		  toValue: 1.2,
+		  useNativeDriver: true
+		}).start();
+		
+		setTimeout(() => {
+		  Animated.timing(animValues.scale[index], {
+			toValue: 1,
+			useNativeDriver: true
+		  }).start();
+		}, 1000);
+	  }
+	const colorAnimValue = sizeAnimValue.interpolate({
+		inputRange: [1, 1.2],
+		outputRange: ['rgb(14, 50, 83)', 'rgb(38, 91, 139)']
+	})
+
+	useEffect(() => {
+		const id = rotateAnimValue.addListener(state => {
+			setRotateValue(state.value);
+		});
+		return () => {
+			rotateAnimValue.removeListener(id);
+		};
+	}, []);
+
+	useEffect(() => {
+		const randomNumber = Math.floor(Math.random() * 20) + 1
+		setAnswer(randomNumber.toString())
+		console.log(randomNumber)
+	}, [])
+
+	const checkAnswer = () => {
+		if (guess === answer) {
+			setNumbers([...numbers, guess])
+			setHint('Correct!')
+			setTryings(String(Number(tryings) + 1))
+		} else if(Number(guess) > Number(answer)) {
+			setNumbers([...numbers, guess])
+			setHint('Too high')
+			setTryings(String(Number(tryings) + 1))
 		} else {
-			if(number === '.' && secondNumber === '') {
-				setSecondNumber(0 + number)
-				setDisplay(0 + number)
-			} else{
-				setSecondNumber(secondNumber + number)
-				setDisplay(secondNumber + number)
-			}
+			setNumbers([...numbers, guess])
+			setHint('Too low')
+			setTryings(String(Number(tryings) + 1))
 		}
 	}
-	const handleClearEverything = () => {
-		setFirstNumber('')
-		setSecondNumber('')
-		setOperator('')
-		setDisplay('0')
-	}
-	const handleOperator = async(operator: string) => {
-		if(secondNumber !== '') {
-			handleCount()
-			setTimeout(() => {
-				setOperator(operator)
-				setDisplay(display + operator)
-			}, 1000)
-			// setOperator(operator)
-			// setDisplay(display + operator)
-		} 
-		else if(firstNumber !== '') {
-			setOperator(operator)
-			setDisplay(firstNumber + operator)
+
+	const setInputValue = (e: any) => {
+		if(e.nativeEvent.text === '') {
+			setGuess(e.nativeEvent.text)	
 		}
-	}	
-	const handleDelete = () => {
-		if(secondNumber !== '') {
-			setSecondNumber(secondNumber.slice(0, -1))
-			setDisplay(secondNumber.slice(0, -1))
+		else if (Number(e.nativeEvent.text) > 20 || Number(e.nativeEvent.text) < 1) {
+			setGuess(e.nativeEvent.text.slice(0, e.nativeEvent.text.length - 1))
+			setHint('Your number must be from 1 to 20')
 		} else {
-			setFirstNumber(firstNumber.slice(0, -1))
-			setDisplay(firstNumber.slice(0, -1))
-		}
-	}
-	const handleCount = () => {
-		if(secondNumber !== '') {
-			if(operator === '+') {
-				setFirstNumber(String(Number(firstNumber) + Number(secondNumber)))
-				setSecondNumber('')
-				sweepResultAnimation()
-				setTimeout(() => {
-					setDisplay(String(Number(firstNumber) + Number(secondNumber)))
-				}, 500);
-			} else if(operator === '-') {
-				setFirstNumber(String(Number(firstNumber) - Number(secondNumber)))
-				setSecondNumber('')
-				sweepResultAnimation()
-				setTimeout(() => {
-					setDisplay(String(Number(firstNumber) - Number(secondNumber)))
-				}, 500);
-			} else if(operator === 'x') {
-				setFirstNumber(String(Number(firstNumber) * Number(secondNumber)))
-				setSecondNumber('')
-				sweepResultAnimation()
-				setTimeout(() => {
-					setDisplay(String(Number(firstNumber) * Number(secondNumber)))
-				}, 500);
-			} else if(operator === '/') {
-				setFirstNumber(String(Number(firstNumber) / Number(secondNumber)))
-				setSecondNumber('')
-				sweepResultAnimation()
-				setTimeout(() => {
-					setDisplay(String(Number(firstNumber) / Number(secondNumber)))
-				}, 500);
-			} else if(operator === '^') {
-				setFirstNumber(String(Number(firstNumber) ** Number(secondNumber)))
-				setSecondNumber('')
-				sweepResultAnimation()
-				setTimeout(() => {
-					setDisplay(String(Number(firstNumber) ** Number(secondNumber)))	
-				}, 500);
-			}
-		}
-	}
-	const handlePercent = () => {
-		if(secondNumber !== '') {
-			setSecondNumber(String(Number(secondNumber) / 100))
-			setDisplay(String(Number(secondNumber) / 100))
-		} else {
-			setFirstNumber(String(Number(firstNumber) / 100))
-			setDisplay(String(Number(firstNumber) / 100))
+			setGuess(e.nativeEvent.text)
 		}
 	}
 
 	return (
 		<View style={styles.container}>
-			<View style={styles.answerBox}>
-				<Animated.Text style={[styles.answer, {transform: [{translateX: sweepResultAnim}]}]}>{display}</Animated.Text>
-			</View>
-			<View style={styles.buttonBox}>
-				<TouchableOpacity style={styles.buttonRed} onPress={() => handleClearEverything()}>
-					<Text style={styles.buttonText}>AC</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.buttonOrange} onPress={() => handleOperator('^')}>
-					<Text style={styles.buttonText}>^</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.buttonOrange} onPress={() => handlePercent()}>
-					<Text style={styles.buttonText}>%</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.buttonOrange} onPress={() => handleOperator('/')}>
-					<Text style={styles.buttonText}>/</Text>
-				</TouchableOpacity>
-
-	
-				<TouchableOpacity style={styles.button} onPress={() => handleNumber('7')}>					
-					<Text style={[styles.buttonText]}>7</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.button} onPress={() => handleNumber('8')}>
-					<Text style={styles.buttonText}>8</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.button} onPress={() => handleNumber('9')}>
-					<Text style={styles.buttonText}>9</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.buttonOrange} onPress={() => handleOperator('x')}>
-					<Text style={styles.buttonText}>X</Text>
-				</TouchableOpacity>
-
-				<TouchableOpacity style={styles.button} onPress={() => handleNumber('4')}>
-					<Text style={styles.buttonText}>4</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.button} onPress={() => handleNumber('5')}>
-					<Text style={styles.buttonText}>5</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.button} onPress={() => handleNumber('6')}>
-					<Text style={styles.buttonText}>6</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.buttonOrange} onPress={() => handleOperator('-')}>
-					<Text style={styles.buttonText}>-</Text>
-				</TouchableOpacity>
-
-				<TouchableOpacity style={styles.button} onPress={() => handleNumber('1')}>
-					<Text style={styles.buttonText}>1</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.button} onPress={() => handleNumber('2')}>
-					<Text style={styles.buttonText}>2</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.button} onPress={() => handleNumber('3')}>
-					<Text style={styles.buttonText}>3</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.buttonOrange} onPress={() => handleOperator('+')}>
-					<Text style={styles.buttonText}>+</Text>
-				</TouchableOpacity>
-
-				<TouchableOpacity style={styles.button} onPress={() => handleNumber('0')}>
-					<Text style={styles.buttonText}>0</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.button} onPress={() => handleNumber('.')}>
-					<Text style={styles.buttonText}>,</Text>
-				</TouchableOpacity>
-				<TouchableOpacity style={styles.button} onPress={() => handleDelete()} onPressIn={() => sweepInAnimation()} onPressOut={() => sweepOutAnimation()}>
-					<Animated.Text style={[styles.buttonText, {transform: [{translateX: sweepAnim}]}]}><Icon name='arrow-back' size={45}/></Animated.Text>
-				</TouchableOpacity>
-				<Animated.View style={[styles.buttonCover, {transform: [{scale: scaleAnim}]}]}>
-					<TouchableOpacity style={styles.buttonGreen} onPress={() => handleCount()} onPressIn={() => scaleInAnimation()} onPressOut={() => scaleOutAnimation()}>
-						<Text style={styles.buttonText}>=</Text>
-					</TouchableOpacity>
-				</Animated.View>
+			<Animated.Text style={[styles.title]}>Guess the Number</Animated.Text>
+			<Text style={styles.answer}>{hint}</Text>
+			<Text style={styles.tryings}>{tryings}</Text>
+			<CustomInput value={guess} onChange={(e) => {setInputValue(e)}} placeholder='0'/>
+			<TouchableOpacity style={styles.button} onPress={() => checkAnswer()} >
+				<Text style={styles.buttonText}>Guess</Text>
+			</TouchableOpacity>
+			<View style={styles.box}>
+			{numbers.map((number, index) => {
+				const colorAnimValue = animValues.scale[index]?.interpolate({
+					inputRange: [1, 1.2],
+					outputRange: ['rgb(14, 50, 83)', 'rgb(38, 91, 139)']
+				}) || 'rgb(14, 50, 83)';
+				
+				if(number === answer){
+					return(
+					<Animated.View 
+						key={index} 
+						style={[
+						styles.numberButtonCover, 
+						{transform: [{rotate: animValues.rotate[index] ? 
+							animValues.rotate[index].interpolate({
+							inputRange: [0, 360],
+							outputRange: ['0deg', '360deg']
+							}) : '0deg'}]}
+						]}
+					>
+						<TouchableOpacity 
+						style={styles.numberButton} 
+						onPress={() => rotateInAnimation(index)}
+						>
+						<Text style={styles.numberText}>{number}</Text>
+						</TouchableOpacity>
+					</Animated.View>
+					);
+				} else {
+					return(
+					<Animated.View 
+						key={index} 
+						style={[
+						styles.numberButtonCover, 
+						{
+							backgroundColor: colorAnimValue,
+							transform: [{scale: animValues.scale[index] || 1}]
+						}
+						]}
+					>
+						<TouchableOpacity 
+						style={styles.numberButton} 
+						onPress={() => scaleInAnimation(index)}
+						>
+						<Text style={styles.numberText}>{number}</Text>
+						</TouchableOpacity>
+					</Animated.View>
+					);
+				}
+				})}
 			</View>
 
 			<StatusBar style='auto' />
@@ -267,84 +195,71 @@ const styles = StyleSheet.create({
 		marginTop: 60,
 		flexDirection: 'column',
 		height: '100%',
-		backgroundColor: '#FFFBFA',
+		backgroundColor:  bgColor,
 		alignItems: 'center',
 	},
-	box: {
-		width: 100,
-		height: 100,
-		backgroundColor: 'blue'
-	},
-	answerBox:{
-		// borderWidth: 2,
-		borderColor: 'white',
-		width: Dimensions.get('window').width - 40,
-		height: Dimensions.get('window').height / 3,
-		justifyContent: 'flex-end',
-		alignItems: 'flex-end',
-		// overflow: 'hidden',
-	},
-	answer:{
-		color: '#00203E',
-		fontSize: 120,
+	title:{
 		fontFamily: 'Nunito_800ExtraBold',
-		textAlign: 'right',
-		marginRight: 10,
-	},
-	buttonBox:{
-		marginTop: 20,
-		width: Dimensions.get('window').width - 40,
-		height: Dimensions.get('window').height - Dimensions.get('window').height / 3 - 100,
-		flexDirection: 'row',
-		flexWrap: 'wrap',
-		gap: 13,
-	},
-	buttonCover:{
-		borderRadius: 30,
-		backgroundColor: 'rgb(113, 145, 175)',
-		width: '23%',
-		height: '17%',
-		justifyContent: 'center',
-		alignItems: 'center',
-		overflow: 'hidden',
+		fontSize: 45,
+		color: darkAccentColor,
 	},
 	button:{
-		borderRadius: 30,
-		backgroundColor: 'rgb(113, 145, 175)',
-		width: '23%',
-		height: '17%',
-		justifyContent: 'center',
+		backgroundColor: darkAccentColor,
+		borderRadius: 10,
+		padding: 10,
+		marginTop: 10,
+		width: '30%',
 		alignItems: 'center',
-		overflow: 'hidden',
-	},
-	buttonRed:{
-		backgroundColor: 'rgb(38, 91, 139)',
-		width: '23%',
-		height: '17%',
 		justifyContent: 'center',
-		alignItems: 'center',
-		borderRadius: 30,
-	},
-	buttonOrange:{
-		backgroundColor:'rgb(14, 50, 83)',
-		width: '23%',
-		height: '17%',
-		justifyContent: 'center',
-		alignItems: 'center',
-		borderRadius: 30,
-	},
-	buttonGreen:{
-		backgroundColor:'rgb(38, 91, 139)',
-		width: '100%',
-		height: '100%',
-		justifyContent: 'center',
-		alignItems: 'center',
-		borderRadius: 30,
+		flexDirection: 'row',
 	},
 	buttonText:{
+		fontFamily: 'Nunito_800ExtraBold',
+		fontSize: 25,
+		color: bgColor,
+	},
+	answer:{
+		fontFamily: 'Nunito_800ExtraBold',
+		fontSize: 25,
+		color: darkAccentColor,
+		marginBottom: 10,
+	},
+	tryings:{
+		fontFamily: 'Nunito_800ExtraBold',
+		fontSize: 35,
+		color: darkAccentColor,
+		marginBottom: 10,
+		position: 'absolute',
+		right: 20,
+		top: 63,
+	},
+	box:{
+		width: Dimensions.get('window').width - 40,
+		height: 820,
+		backgroundColor: lightAccentColor,
+		borderRadius: 10,
+		marginTop: 10,
+		gap: 10,
+		padding: '2%',
+		flexDirection: 'row',
+		
+	},
+	numberButtonCover:{
+		width: '18.3%',
+		height: '11%',
+		backgroundColor: darkAccentColor,
+		borderRadius: 10,
+	},
+	numberButton:{
+		width: '100%',
+		height: '100%',
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	numberText:{
+		fontFamily: 'Nunito_800ExtraBold',
 		fontSize: 45,
-		color: '#FFFBFA',
-		fontFamily: 'Nunito_700Bold',
+		color: bgColor,
 	}
 })
 
